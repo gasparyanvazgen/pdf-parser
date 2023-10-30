@@ -11,5 +11,7 @@ public interface GmailService {
 
     List<Message> fetchMessagesBySubject(String subject) throws IOException;
 
-    Message fetchMessageById(String messageId) throws IOException;
+    List<String> fetchAttachmentIds(String messageId) throws IOException;
+
+    byte[] fetchPdfAttachment(String messageId, String attachmentId) throws IOException;
 }
