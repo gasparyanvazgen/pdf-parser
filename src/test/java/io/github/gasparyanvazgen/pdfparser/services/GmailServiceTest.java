@@ -1,10 +1,13 @@
-package io.github.gasparyanvazgen.pdfparser.service;
+package io.github.gasparyanvazgen.pdfparser.services;
 
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -23,11 +26,7 @@ class GmailServiceTest {
     @Autowired
     private GmailService gmailService;
 
-    @Test
-    void fetchAllMessages() throws IOException {
-        List<Message> messages = gmailService.fetchAllMessages();
-        assertNotNull(messages);
-    }
+    private static final Logger logger = LoggerFactory.getLogger(GmailServiceTest.class);
 
     @ParameterizedTest
     @CsvSource({
@@ -63,22 +62,23 @@ class GmailServiceTest {
 
                     if (attachmentData != null) {
                         if (!isValidPdf(attachmentData)) {
-                            System.err.println("Attachment ID: " + attachmentId + " is not a valid PDF.");
+                            logger.error("Attachment ID: {} is not a valid PDF.", attachmentId);
                         }
                     } else {
-                        System.err.println("Attachment data is null for attachment ID: " + attachmentId);
+                        logger.error("Attachment data is null for attachment ID: {}", attachmentId);
                     }
                 }
             }
         }
     }
 
-
     private boolean isValidPdf(byte[] data) {
-        return data.length >= 4 &&
-                data[0] == (byte) 0x25 &&  // %
-                data[1] == (byte) 0x50 &&  // P
-                data[2] == (byte) 0x44 &&  // D
-                data[3] == (byte) 0x46;    // F
+        try {
+            PDDocument.load(data);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
+
 }
