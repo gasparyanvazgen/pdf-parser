@@ -23,7 +23,7 @@ import java.util.Collections;
 
 
 @Configuration
-public class GmailConfiguration {
+public class GmailConfig {
 
     @Value("${gmail.applicationName}")
     private String applicationName;
@@ -69,4 +69,5 @@ public class GmailConfiguration {
         // authorize the application for the specified user
         return new AuthorizationCodeInstalledApp(flow, receiver).authorize(userId);
     }
+
 }

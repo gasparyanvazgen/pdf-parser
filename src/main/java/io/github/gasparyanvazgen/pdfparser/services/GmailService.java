@@ -1,4 +1,4 @@
-package io.github.gasparyanvazgen.pdfparser.service;
+package io.github.gasparyanvazgen.pdfparser.services;
 
 import com.google.api.services.gmail.model.Message;
 
@@ -7,11 +7,10 @@ import java.util.List;
 
 public interface GmailService {
 
-    List<Message> fetchAllMessages() throws IOException;
-
     List<Message> fetchMessagesBySubject(String subject) throws IOException;
 
     List<String> fetchAttachmentIds(String messageId) throws IOException;
 
     byte[] fetchPdfAttachment(String messageId, String attachmentId) throws IOException;
+
 }
