@@ -57,7 +57,6 @@ public class GmailServiceImpl implements GmailService {
     }
 
     private boolean isAttachment(MessagePart part) {
-        System.out.println(part.getFilename() + ":filename, " + part.getBody().getData() + ":body data, " + part.getBody().getAttachmentId() + ":attachment id");
         return part.getFilename() != null && part.getBody() != null;
     }
 
