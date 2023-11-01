@@ -3,3 +3,8 @@ gmail:
   tokensDirectoryPath: tokens
   credentialsFilePath: /credentials.json
   userId: example@gmail.com
+
+firebase:
+  storage:
+    googleApplicationCredentials: /serviceAccountKey.json
+    storageBucket: project_id.appspot.com
