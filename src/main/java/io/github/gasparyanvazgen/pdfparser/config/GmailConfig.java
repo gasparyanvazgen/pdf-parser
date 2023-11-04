@@ -25,6 +25,8 @@ import java.util.Collections;
 @Configuration
 public class GmailConfig {
 
+    public static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+
     @Value("${gmail.applicationName}")
     private String applicationName;
 
@@ -36,8 +38,6 @@ public class GmailConfig {
 
     @Value("${gmail.userId}")
     private String userId;
-
-    public static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
     @Bean
     public Gmail gmail() throws Exception {
@@ -51,7 +51,7 @@ public class GmailConfig {
     }
 
     private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // load client secrets from the provided credentials.json file
+        // load client secrets from the provided gmail-credentials.json file
         InputStream in = getClass().getResourceAsStream(credentialsFilePath);
         if (in == null) {
             throw new IOException("Resource not found: " + credentialsFilePath);

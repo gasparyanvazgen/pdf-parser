@@ -1,6 +1,9 @@
 package io.github.gasparyanvazgen.pdfparser.services;
 
-import io.github.gasparyanvazgen.pdfparser.exceptions.PdfProcessingException;
+import com.google.api.services.gmail.model.Message;
+import io.github.gasparyanvazgen.pdfparser.exceptions.GmailServiceFetchException;
+import io.github.gasparyanvazgen.pdfparser.exceptions.MessageNotFoundException;
+import io.github.gasparyanvazgen.pdfparser.exceptions.PdfParsingException;
 import io.github.gasparyanvazgen.pdfparser.model.PdfContent;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -9,8 +12,6 @@ import org.apache.pdfbox.pdmodel.PDPageTree;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,16 +19,20 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
-public class PdfProcessingServiceImpl implements PdfProcessingService {
+public class PdfParserServiceImpl implements PdfParserService {
+
+    @Autowired
+    private GmailService gmailService;
 
     @Autowired
     private FirebaseStorageService firebaseStorageService;
 
-    private static final Logger logger = LoggerFactory.getLogger(PdfProcessingServiceImpl.class);
-
-    public PdfContent extractTextAndImages(byte[] pdfBytes, String messageId, String attachmentId) throws PdfProcessingException {
+    @Override
+    public PdfContent extractPdfContentFromAttachment(byte[] pdfBytes, String messageId, String attachmentId) throws PdfParsingException {
         PdfContent pdfContent = new PdfContent();
 
         try (PDDocument document = PDDocument.load(pdfBytes)) {
@@ -35,7 +40,6 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
             PDFTextStripper textStripper = new PDFTextStripper();
             String pdfText = textStripper.getText(document);
             pdfContent.setTextContent(pdfText);
-            logger.debug("pdfText: " + pdfText);
 
             // extract images from the pdf
             PDPageTree pages = document.getPages();
@@ -66,11 +70,33 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
                 }
             }
         } catch (IOException e) {
-            logger.error("Error during PDF processing: " + e.getMessage());
-            throw new PdfProcessingException("Error during PDF processing", e);
+            String errorMessage = String.format("Error during PDF processing for message ID: %s, attachment ID: %s", messageId, attachmentId);
+            throw new PdfParsingException(errorMessage, e);
         }
 
         return pdfContent;
+    }
+
+    @Override
+    public List<PdfContent> extractPdfContentsFromAttachments(List<Message> messages) throws MessageNotFoundException, GmailServiceFetchException, PdfParsingException {
+        List<PdfContent> pdfContents = new ArrayList<>();
+
+        if (messages != null) {
+            for (Message message : messages) {
+                List<String> attachmentIds = gmailService.fetchAttachmentIds(message.getId());
+
+                for (String attachmentId : attachmentIds) {
+                    if (attachmentId != null) {
+                        byte[] pdfBytes = gmailService.fetchPdfAttachment(message.getId(), attachmentId);
+
+                        PdfContent pdfContent = extractPdfContentFromAttachment(pdfBytes, message.getId(), attachmentId);
+                        pdfContents.add(pdfContent);
+                    }
+                }
+            }
+        }
+
+        return pdfContents;
     }
 
 }

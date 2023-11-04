@@ -2,23 +2,26 @@ package io.github.gasparyanvazgen.pdfparser.services;
 
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
+import io.github.gasparyanvazgen.pdfparser.exceptions.GmailServiceFetchException;
+import io.github.gasparyanvazgen.pdfparser.exceptions.MessageNotFoundException;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class GmailServiceTest {
+
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     @Autowired
     private Gmail gmail;
@@ -26,50 +29,99 @@ class GmailServiceTest {
     @Autowired
     private GmailService gmailService;
 
-    private static final Logger logger = LoggerFactory.getLogger(GmailServiceTest.class);
+    @ParameterizedTest
+    @CsvSource({
+            "Bank statement, true",
+            "Invalid subject, false"
+    })
+    void fetchMessagesBySubject(String subject, boolean expectedResult) throws MessageNotFoundException, GmailServiceFetchException {
+        if (expectedResult) {
+            List<Message> messages = gmailService.fetchMessagesBySubject(subject);
+            assertNotNull(messages);
+            assertFalse(messages.isEmpty());
+        } else {
+            assertThrows(MessageNotFoundException.class, () -> gmailService.fetchMessagesBySubject(subject));
+        }
+    }
 
     @ParameterizedTest
     @CsvSource({
-            "Bank statement, false",
-            "Top launches you missed, false",
-            "RandomUnlikelySubject123, true"
+            "Bank statement, 2023-11-01, true",
+            "Invalid subject, 2023-11-01, false"
     })
-    void fetchMessagesBySubject(String subject, boolean expectedResult) throws IOException {
-        boolean actualResult = Optional.ofNullable(gmailService.fetchMessagesBySubject(subject)).isEmpty();
-        assertEquals(expectedResult, actualResult);
-    }
+    void fetchMessagesBySubjectAndStartDate(String subject, String startDateStr, boolean expectedResult) throws MessageNotFoundException, GmailServiceFetchException, ParseException {
+        Date startDate = dateFormat.parse(startDateStr);
 
-    @Test
-    void fetchAttachmentIds() {
+        if (expectedResult) {
+            List<Message> messages = gmailService.fetchMessagesBySubjectAndStartDate(subject, startDate);
+            assertNotNull(messages);
+            assertFalse(messages.isEmpty());
+        } else {
+            assertThrows(MessageNotFoundException.class, () -> gmailService.fetchMessagesBySubjectAndStartDate(subject, startDate));
+        }
     }
 
     @ParameterizedTest
     @CsvSource({
-            "Bank statement"
+            "Bank statement, 2023-11-01, true",
+            "Invalid subject, 2023-11-01, false"
     })
-    void fetchPdfAttachment(String subject) throws IOException {
-        List<Message> messages = gmailService.fetchMessagesBySubject(subject);
+    void fetchMessagesBySubjectAndEndDate(String subject, String endDateStr, boolean expectedResult) throws MessageNotFoundException, GmailServiceFetchException, ParseException {
+        Date endDate = dateFormat.parse(endDateStr);
 
-        for (Message message : messages) {
-            List<String> attachmentIds = gmailService.fetchAttachmentIds(message.getId());
+        if (expectedResult) {
+            List<Message> messages = gmailService.fetchMessagesBySubjectAndEndDate(subject, endDate);
+            assertNotNull(messages);
+            assertFalse(messages.isEmpty());
+        } else {
+            assertThrows(MessageNotFoundException.class, () -> gmailService.fetchMessagesBySubjectAndEndDate(subject, endDate));
+        }
+    }
 
-            assertNotNull(attachmentIds);
-            assertFalse(attachmentIds.isEmpty(), "No attachment IDs found for message: " + message.getId());
+    @ParameterizedTest
+    @CsvSource({
+            "Bank statement, 2023-11-01, 2023-11-05, true",
+            "Invalid subject, 2023-11-01, 2023-11-05, false"
+    })
+    void fetchMessagesBySubjectAndDateRange(String subject, String startDateStr, String endDateStr, boolean expectedResult) throws MessageNotFoundException, GmailServiceFetchException, ParseException {
+        Date startDate = dateFormat.parse(startDateStr);
+        Date endDate = dateFormat.parse(endDateStr);
 
-            for (String attachmentId : attachmentIds) {
-                if (attachmentId != null) {
-                    byte[] attachmentData = gmailService.fetchPdfAttachment(message.getId(), attachmentId);
+        if (expectedResult) {
+            List<Message> messages = gmailService.fetchMessagesBySubjectAndDateRange(subject, startDate, endDate);
+            assertNotNull(messages);
+            assertFalse(messages.isEmpty());
+        } else {
+            assertThrows(MessageNotFoundException.class, () -> gmailService.fetchMessagesBySubjectAndDateRange(subject, startDate, endDate));
+        }
+    }
 
-                    if (attachmentData != null) {
-                        if (!isValidPdf(attachmentData)) {
-                            logger.error("Attachment ID: {} is not a valid PDF.", attachmentId);
-                        }
-                    } else {
-                        logger.error("Attachment data is null for attachment ID: {}", attachmentId);
+    @ParameterizedTest
+    @CsvSource({
+            "Bank statement, true"
+    })
+    void testFetchPdfAttachment(String subject, boolean expectedResult) throws MessageNotFoundException, GmailServiceFetchException {
+        if (expectedResult) {
+            List<Message> messages = gmailService.fetchMessagesBySubject(subject);
+            assertNotNull(messages);
+            assertFalse(messages.isEmpty());
+
+            for (Message message : messages) {
+                List<String> attachmentIds = gmailService.fetchAttachmentIds(message.getId());
+                assertNotNull(attachmentIds);
+                assertFalse(attachmentIds.isEmpty());
+
+                for (String attachmentId : attachmentIds) {
+                    if (attachmentId != null) {
+                        byte[] pdfBytes = gmailService.fetchPdfAttachment(message.getId(), attachmentId);
+                        assertTrue(isValidPdf(pdfBytes));
                     }
                 }
             }
+        } else {
+            assertThrows(MessageNotFoundException.class, () -> gmailService.fetchMessagesBySubject(subject));
         }
+
     }
 
     private boolean isValidPdf(byte[] data) {
@@ -80,5 +132,4 @@ class GmailServiceTest {
             return false;
         }
     }
-
 }

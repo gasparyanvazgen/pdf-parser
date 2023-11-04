@@ -1,10 +1,10 @@
 gmail:
   applicationName: pdf-parser
   tokensDirectoryPath: tokens
-  credentialsFilePath: /credentials.json
+  credentialsFilePath: /gmail-credentials.json
   userId: example@gmail.com
 
 firebase:
   storage:
-    googleApplicationCredentials: /serviceAccountKey.json
+    googleApplicationCredentials: /firebase-credentials.json
     storageBucket: project_id.appspot.com
